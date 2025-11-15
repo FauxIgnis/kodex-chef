@@ -1,52 +1,60 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  BubbleMenu,
   EditorContent,
+  useEditor,
+  BubbleMenu,
   FloatingMenu,
   ReactNodeViewRenderer,
-  useEditor,
 } from "@tiptap/react";
 import type { Editor as TipTapEditorInstance } from "@tiptap/react";
-import Placeholder from "@tiptap/extension-placeholder";
+
 import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
+
 import Details from "@tiptap/extension-details";
 import DetailsSummary from "@tiptap/extension-details-summary";
 import DetailsContent from "@tiptap/extension-details-content";
+
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { createLowlight } from "lowlight";
+
 import javascript from "highlight.js/lib/languages/javascript";
 import typescript from "highlight.js/lib/languages/typescript";
 import css from "highlight.js/lib/languages/css";
 import html from "highlight.js/lib/languages/xml";
 import json from "highlight.js/lib/languages/json";
 import python from "highlight.js/lib/languages/python";
+
 import { Node, mergeAttributes } from "@tiptap/core";
+
 import clsx from "clsx";
-import {
-  Bars3BottomLeftIcon,
-  Bars3Icon,
-  BarsArrowDownIcon,
-  CodeBracketIcon,
-  DocumentTextIcon,
-  HashtagIcon,
-  LinkIcon,
-  MinusIcon,
-  PhotoIcon,
-  QueueListIcon,
-  RectangleGroupIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
+
 import { SlashCommandExtension, SlashCommandItem } from "./editor/slashCommandExtension";
 import { CalloutNodeView } from "./editor/nodes/CalloutNodeView";
 import { EmbedNodeView } from "./editor/nodes/EmbedNodeView";
 import { TableBubbleMenu } from "./editor/TableBubbleMenu";
+
+import {
+  CodeBracketIcon,
+  PhotoIcon,
+  DocumentTextIcon,
+  QueueListIcon,
+  Bars3Icon,
+  HashtagIcon,
+  LinkIcon,
+  MinusIcon,
+  SparklesIcon,
+  BarsArrowDownIcon,
+  RectangleGroupIcon,
+} from "@heroicons/react/24/outline";
 
 const lowlight = createLowlight();
 lowlight.register("javascript", javascript);
@@ -55,6 +63,20 @@ lowlight.register("css", css);
 lowlight.register("html", html);
 lowlight.register("json", json);
 lowlight.register("python", python);
+
+function safe(editor: TipTapEditorInstance | null) {
+  if (!editor || editor.isDestroyed) return null;
+  return editor.chain().focus();
+}
+
+function isValidUrl(url: string) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const ToggleExtension = Details.extend({
   name: "toggle",
@@ -74,29 +96,15 @@ const Callout = Node.create({
   selectable: true,
   addAttributes() {
     return {
-      emoji: {
-        default: "💡",
-      },
-      color: {
-        default: "default",
-      },
+      emoji: { default: "💡" },
+      color: { default: "default" },
     };
   },
   parseHTML() {
-    return [
-      {
-        tag: "aside[data-type='callout']",
-      },
-    ];
+    return [{ tag: "aside[data-type='callout']" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return [
-      "aside",
-      mergeAttributes(HTMLAttributes, {
-        "data-type": "callout",
-      }),
-      0,
-    ];
+    return ["aside", mergeAttributes(HTMLAttributes, { "data-type": "callout" }), 0];
   },
   addNodeView() {
     return ReactNodeViewRenderer(CalloutNodeView);
@@ -106,18 +114,17 @@ const Callout = Node.create({
       setCallout:
         (attrs) =>
         ({ editor, range }) => {
-          const content = {
-            type: this.name,
-            attrs: attrs ?? {},
-            content: [
-              {
-                type: "paragraph",
-              },
-            ],
-          };
+          const pos = range ?? editor.state.selection.head;
+          const size = editor.state.doc.content.size;
+          const clamped = Math.max(0, Math.min(pos, size));
 
-          editor.commands.insertContentAt(range ?? editor.state.selection.head, content);
-          editor.chain().focus().run();
+          editor.commands.insertContentAt(clamped, {
+            type: "callout",
+            attrs: attrs ?? {},
+            content: [{ type: "paragraph" }],
+          });
+
+          safe(editor)?.run();
           return true;
         },
     };
@@ -131,28 +138,15 @@ const Embed = Node.create({
   selectable: true,
   addAttributes() {
     return {
-      url: {
-        default: "",
-      },
-      title: {
-        default: null,
-      },
+      url: { default: "" },
+      title: { default: null },
     };
   },
   parseHTML() {
-    return [
-      {
-        tag: "div[data-type='embed']",
-      },
-    ];
+    return [{ tag: "div[data-type='embed']" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, {
-        "data-type": "embed",
-      }),
-    ];
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "embed" })];
   },
   addNodeView() {
     return ReactNodeViewRenderer(EmbedNodeView);
@@ -163,219 +157,138 @@ const Embed = Node.create({
         (attrs) =>
         ({ editor, range }) => {
           if (!attrs?.url) return false;
-          const content = {
-            type: this.name,
+
+          const pos = range ?? editor.state.selection.head;
+          const size = editor.state.doc.content.size;
+          const clamped = Math.max(0, Math.min(pos, size));
+
+          editor.commands.insertContentAt(clamped, {
+            type: "embed",
             attrs,
-          };
-          editor.commands.insertContentAt(range ?? editor.state.selection.head, content);
-          editor.chain().focus().run();
+          });
+
+          safe(editor)?.run();
           return true;
         },
     };
   },
 });
 
-function isValidUrl(url: string) {
-  try {
-    // eslint-disable-next-line no-new
-    new URL(url);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-type TipTapEditorProps = {
+type Props = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  editable?: boolean;
   className?: string;
   editorClassName?: string;
-  editable?: boolean;
 };
 
 export function TipTapEditor({
   value,
   onChange,
-  placeholder = "Type '/' for commands or start writing...",
+  placeholder = "Type '/' for commands…",
+  editable = true,
   className,
   editorClassName,
-  editable = true,
-}: TipTapEditorProps) {
-  const lastValueRef = useRef(value ?? "");
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
+}: Props) {
+  const lastValue = useRef(value ?? "");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<TipTapEditorInstance | null>(null);
 
-  const slashCommands = useMemo<SlashCommandItem[]>(
+  const slashItems = useMemo<SlashCommandItem[]>(
     () => [
       {
         title: "Text",
-        description: "Start writing with plain text",
+        description: "Plain text",
         icon: DocumentTextIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setParagraph().run();
+          safe(editor)?.deleteRange(range).setParagraph().run();
         },
       },
       {
         title: "Heading 1",
-        description: "Large section heading",
+        description: "Large heading",
         icon: HashtagIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run();
+          safe(editor)?.deleteRange(range).setNode("heading", { level: 1 }).run();
         },
       },
       {
-        title: "Heading 2",
-        description: "Medium section heading",
-        icon: HashtagIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run();
-        },
-      },
-      {
-        title: "Heading 3",
-        description: "Small section heading",
-        icon: HashtagIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run();
-        },
-      },
-      {
-        title: "Heading 4",
-        description: "Tiny section heading",
-        icon: HashtagIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setNode("heading", { level: 4 }).run();
-        },
-      },
-      {
-        title: "Bulleted list",
-        description: "Create a simple bullet list",
+        title: "List",
+        description: "Bulleted list",
         icon: Bars3Icon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleBulletList().run();
+          safe(editor)?.deleteRange(range).toggleBulletList().run();
         },
       },
       {
-        title: "Numbered list",
-        description: "Create an ordered list",
+        title: "Ordered list",
+        description: "Numbered",
         icon: QueueListIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleOrderedList().run();
-        },
-      },
-      {
-        title: "Toggle list",
-        description: "Collapsible content",
-        icon: BarsArrowDownIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleDetails().run();
+          safe(editor)?.deleteRange(range).toggleOrderedList().run();
         },
       },
       {
         title: "Quote",
-        description: "Add a block quote",
+        description: "Blockquote",
         icon: SparklesIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleBlockquote().run();
-        },
-      },
-      {
-        title: "Callout",
-        description: "Highlight important information",
-        icon: Bars3BottomLeftIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setCallout().run();
-        },
-      },
-      {
-        title: "Divider",
-        description: "Visually separate blocks",
-        icon: MinusIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+          safe(editor)?.deleteRange(range).toggleBlockquote().run();
         },
       },
       {
         title: "Code block",
-        description: "Capture syntax highlighted code",
+        description: "Syntax highlighted",
         icon: CodeBracketIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).setCodeBlock().run();
+          safe(editor)?.deleteRange(range).setCodeBlock().run();
         },
       },
       {
-        title: "Inline code",
-        description: "Format inline code",
-        icon: CodeBracketIcon,
+        title: "Divider",
+        description: "Horizontal line",
+        icon: MinusIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleCode().run();
+          safe(editor)?.deleteRange(range).setHorizontalRule().run();
         },
       },
       {
-        title: "Bold",
-        description: "Make text bold",
-        icon: Bars3BottomLeftIcon,
+        title: "Callout",
+        description: "Highlighted block",
+        icon: BarsArrowDownIcon,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleBold().run();
-        },
-      },
-      {
-        title: "Italic",
-        description: "Emphasize text",
-        icon: Bars3BottomLeftIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleItalic().run();
-        },
-      },
-      {
-        title: "Underline",
-        description: "Underline text",
-        icon: Bars3BottomLeftIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleUnderline().run();
-        },
-      },
-      {
-        title: "Strikethrough",
-        description: "Strike text",
-        icon: Bars3BottomLeftIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleStrike().run();
-        },
-      },
-      {
-        title: "Image",
-        description: "Upload or paste an image",
-        icon: PhotoIcon,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).run();
-          window.setTimeout(() => {
-            imageInputRef.current?.click();
-          }, 0);
+          safe(editor)?.deleteRange(range).setCallout().run();
         },
       },
       {
         title: "Table",
-        description: "Insert a 3x3 table",
+        description: "3×3 table",
         icon: RectangleGroupIcon,
         command: ({ editor, range }) => {
-          editor
-            .chain()
-            .focus()
-            .deleteRange(range)
+          safe(editor)
+            ?.deleteRange(range)
             .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
             .run();
         },
       },
       {
         title: "Embed",
-        description: "Embed external content",
+        description: "External link",
         icon: LinkIcon,
         command: ({ editor, range }) => {
           const url = window.prompt("Embed URL");
           if (!url) return;
-          editor.chain().focus().deleteRange(range).setEmbed({ url }).run();
+          safe(editor)?.deleteRange(range).setEmbed({ url }).run();
+        },
+      },
+      {
+        title: "Image",
+        description: "Upload",
+        icon: PhotoIcon,
+        command: ({ editor, range }) => {
+          safe(editor)?.deleteRange(range).run();
+          setTimeout(() => inputRef.current?.click(), 0);
         },
       },
     ],
@@ -383,139 +296,105 @@ export function TipTapEditor({
   );
 
   const handleFiles = useCallback(async (files: FileList | null) => {
-    const editorInstance = editorRef.current;
-    if (!editorInstance) return;
+    const instance = editorRef.current;
+    if (!instance || instance.isDestroyed) return;
     if (!files?.length) return;
-    const filesArray = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    if (!filesArray.length) return;
 
-    const insertImage = (src: string, alt?: string) => {
-      editorInstance.chain().focus().setImage({ src, alt }).run();
-    };
+    const items = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (!items.length) return;
 
-    for (const file of filesArray) {
+    for (const f of items) {
       await new Promise<void>((resolve) => {
         const reader = new FileReader();
-        reader.onload = (event) => {
-          const result = event.target?.result;
-          if (typeof result === "string") {
-            insertImage(result, file.name);
+        reader.onload = (e) => {
+          if (!editorRef.current || editorRef.current.isDestroyed) return resolve();
+          if (typeof e.target?.result === "string") {
+            safe(editorRef.current)?.setImage({ src: e.target.result, alt: f.name }).run();
           }
           resolve();
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(f);
       });
     }
   }, []);
 
   const editor = useEditor(
     {
+      content: value,
+      editable,
       extensions: [
         StarterKit.configure({
-          bulletList: {
-            keepMarks: true,
-            keepAttributes: false,
-          },
-          orderedList: {
-            keepMarks: true,
-            keepAttributes: false,
-          },
-          heading: {
-            levels: [1, 2, 3, 4],
-          },
           codeBlock: false,
+          heading: { levels: [1, 2, 3] },
         }),
         Placeholder.configure({
           placeholder,
-          includeChildren: true,
           showOnlyWhenEditable: true,
-          showOnlyCurrent: true,
-          emptyEditorClass: "is-editor-empty",
         }),
         Underline,
         Link.configure({
           openOnClick: false,
           autolink: true,
+          validate: (href) => isValidUrl(href),
           HTMLAttributes: {
-            class:
-              "text-neutral-900 underline underline-offset-2 decoration-neutral-400 hover:decoration-neutral-600",
+            class: "underline text-neutral-700 hover:text-neutral-900",
           },
         }),
-        Image.configure({
-          inline: false,
-          allowBase64: true,
-        }),
+        Image.configure({ allowBase64: true }),
         Table.configure({
           resizable: true,
-          HTMLAttributes: {
-            class:
-              "notion-table w-full overflow-hidden rounded-xl border border-neutral-200 text-sm",
-          },
+          HTMLAttributes: { class: "notion-table w-full text-sm border border-neutral-200" },
         }),
         TableRow,
         TableHeader.configure({
-          HTMLAttributes: {
-            class: "bg-neutral-100 font-semibold",
-          },
+          HTMLAttributes: { class: "bg-neutral-100 font-semibold" },
         }),
         TableCell.configure({
-          HTMLAttributes: {
-            class: "border border-neutral-200 p-3 align-top",
-          },
+          HTMLAttributes: { class: "border p-3 align-top" },
         }),
         CodeBlockLowlight.configure({
           lowlight,
           HTMLAttributes: {
             class:
-              "notion-codeblock overflow-x-auto rounded-xl bg-neutral-950/90 p-4 font-mono text-[13px] text-neutral-100",
+              "rounded-xl bg-neutral-950/90 p-4 font-mono text-[13px] text-neutral-100 overflow-x-auto",
           },
         }),
         ToggleExtension,
         DetailsSummary.configure({
-          HTMLAttributes: {
-            class:
-              "flex cursor-pointer select-none items-center gap-2 text-[15px] font-medium text-neutral-700",
-          },
+          HTMLAttributes: { class: "cursor-pointer text-neutral-700 font-medium flex gap-2" },
         }),
         DetailsContent.configure({
-          HTMLAttributes: {
-            class: "pl-5 text-[15px] text-neutral-700",
-          },
+          HTMLAttributes: { class: "pl-4 text-neutral-700" },
         }),
         Callout,
         Embed,
-        SlashCommandExtension.configure({
-          items: slashCommands,
-        }),
+        SlashCommandExtension.configure({ items: slashItems }),
       ],
-      content: value ?? "",
-      editable,
       editorProps: {
         attributes: {
           class: clsx(
-            "notion-editor prose prose-neutral mx-auto min-h-[60vh] w-full max-w-3xl text-[16px] leading-7 text-neutral-800 outline-none focus:outline-none",
+            "notion-editor prose prose-neutral mx-auto min-h-[50vh] max-w-3xl text-[16px] leading-7 outline-none",
             editorClassName
           ),
-          spellcheck: "true",
-          "data-placeholder": placeholder,
         },
         handlePaste: (view, event) => {
           const files = event.clipboardData?.files;
-          if (files && files.length) {
+          if (files?.length) {
             void handleFiles(files);
             return true;
           }
+
           const text = event.clipboardData?.getData("text/plain");
           if (text && isValidUrl(text)) {
-            editorRef.current?.chain().focus().setEmbed({ url: text }).run();
+            safe(editorRef.current)?.setEmbed({ url: text }).run();
             return true;
           }
+
           return false;
         },
-        handleDrop: (view, event, slice, moved) => {
-          if (!event.dataTransfer) return false;
-          const files = event.dataTransfer.files;
-          if (files && files.length) {
+        handleDrop: (view, event) => {
+          const files = event.dataTransfer?.files;
+          if (files?.length) {
             event.preventDefault();
             void handleFiles(files);
             return true;
@@ -523,104 +402,63 @@ export function TipTapEditor({
           return false;
         },
       },
-      onUpdate: (updateProps) => {
-        const editorInstance = updateProps?.editor;
-        if (!editorInstance) {
-          return;
+      onUpdate({ editor }) {
+        if (!editor || editor.isDestroyed) return;
+        const html = editor.isEmpty ? "" : editor.getHTML();
+        if (lastValue.current !== html) {
+          lastValue.current = html;
+          onChange(html);
         }
-
-        const html = editorInstance.getHTML();
-        const nextValue = editorInstance.isEmpty ? "" : html;
-
-        if (lastValueRef.current === nextValue) {
-          return;
-        }
-
-        lastValueRef.current = nextValue;
-        onChange(nextValue);
       },
     },
-    [
-      editable,
-      editorClassName,
-      handleFiles,
-      onChange,
-      placeholder,
-      slashCommands,
-    ]
+    [editable, placeholder]
   );
 
   useEffect(() => {
-    editorRef.current = editor;
-    return () => {
-      if (editorRef.current === editor) {
-        editorRef.current = null;
-      }
-    };
+    editorRef.current = editor ?? null;
   }, [editor]);
 
   useEffect(() => {
-    if (!editor) return;
-    if (editor.isDestroyed) return;
-    if (editor.isEditable !== editable) {
-      editor.setEditable(editable);
-    }
+    if (!editor || editor.isDestroyed) return;
+    if (editor.isEditable !== editable) editor.setEditable(editable);
   }, [editor, editable]);
 
   useEffect(() => {
-    if (!editor) return;
-    if (editor.isDestroyed) return;
+    if (!editor || editor.isDestroyed) return;
     const normalized = value ?? "";
-    if (lastValueRef.current === normalized) {
+    if (lastValue.current === normalized) return;
+
+    const current = editor.getHTML();
+    if (current === normalized || (editor.isEmpty && normalized === "")) {
+      lastValue.current = normalized;
       return;
     }
 
-    const currentHTML = editor.getHTML();
-    if (currentHTML === normalized || (editor.isEmpty && normalized === "")) {
-      lastValueRef.current = normalized;
-      return;
-    }
-
-    const selection = editor.state?.selection;
+    const selection = editor.state.selection;
     const from = selection?.from ?? 0;
     const to = selection?.to ?? 0;
+
     editor.commands.setContent(normalized, false);
 
-    if (editor.isDestroyed) {
-      lastValueRef.current = editor.isEmpty ? "" : editor.getHTML();
-      return;
-    }
+    const size = editor.state.doc.content.size;
+    const clamp = (n: number) => Math.max(0, Math.min(n, size));
 
-    const docSize = Math.max(0, editor.state?.doc.content.size ?? 0);
-    const clampToDoc = (position: number) => {
-      if (position < 0) {
-        return 0;
-      }
+    safe(editor)
+      ?.setTextSelection({ from: clamp(from), to: clamp(to) })
+      .run();
 
-      if (position > docSize) {
-        return docSize;
-      }
+    lastValue.current = normalized;
+  }, [value, editor]);
 
-      return position;
-    };
-
-    const clampedFrom = clampToDoc(from);
-    const clampedTo = clampToDoc(to);
-
-    editor.commands.setTextSelection({ from: clampedFrom, to: clampedTo });
-    const updatedHtml = editor.getHTML();
-    lastValueRef.current = editor.isEmpty ? "" : updatedHtml;
-  }, [editor, value]);
-
-  const menuButtonClass = (isActive: boolean) =>
+  const menuBtn = (active: boolean) =>
     clsx(
-      "flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-medium transition",
-      isActive
+      "flex h-8 w-8 items-center justify-center rounded-full text-[13px] transition",
+      active
         ? "bg-neutral-900 text-white"
         : "text-neutral-100 hover:bg-white/10 hover:text-white"
     );
 
-  const blockButtonClass = (active?: boolean) =>
+  const blockBtn = (active?: boolean) =>
     clsx(
       "inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm transition",
       active
@@ -628,108 +466,103 @@ export function TipTapEditor({
         : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
     );
 
-  const handleImageInputChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      void handleFiles(event.target.files);
-      event.target.value = "";
-    },
-    [handleFiles]
-  );
-
   return (
     <div
       className={clsx(
-        "group/editor relative rounded-2xl border border-neutral-200 bg-white/70 px-6 py-5 shadow-sm transition",
+        "relative rounded-2xl border border-neutral-200 bg-white px-6 py-5 shadow-sm",
         className
       )}
     >
       <input
-        ref={imageInputRef}
+        ref={inputRef}
         type="file"
         accept="image/*"
         multiple
         hidden
-        onChange={handleImageInputChange}
+        onChange={(e) => {
+          void handleFiles(e.target.files);
+          e.target.value = "";
+        }}
       />
-      {editor ? (
+
+      {!editor ? (
+        <div className="h-40 animate-pulse rounded-xl bg-neutral-200/80" />
+      ) : (
         <>
           <BubbleMenu
             editor={editor}
-            tippyOptions={{
-              duration: 100,
-              animation: "shift-away",
-              offset: [0, 12],
-            }}
-            className="overflow-hidden rounded-full bg-neutral-900/95 px-2 py-1 shadow-2xl"
+            tippyOptions={{ duration: 100, offset: [0, 8] }}
+            className="rounded-full bg-neutral-900/95 px-2 py-1 shadow-xl"
           >
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleBold().run()}
-                className={menuButtonClass(editor.isActive("bold"))}
+                onClick={() => safe(editor)?.toggleBold().run()}
+                className={menuBtn(editor.isActive("bold"))}
               >
                 <strong>B</strong>
               </button>
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={menuButtonClass(editor.isActive("italic"))}
+                onClick={() => safe(editor)?.toggleItalic().run()}
+                className={menuBtn(editor.isActive("italic"))}
               >
                 <em>I</em>
               </button>
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                className={menuButtonClass(editor.isActive("underline"))}
+                onClick={() => safe(editor)?.toggleUnderline().run()}
+                className={menuBtn(editor.isActive("underline"))}
               >
                 <span className="underline">U</span>
               </button>
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleStrike().run()}
-                className={menuButtonClass(editor.isActive("strike"))}
+                onClick={() => safe(editor)?.toggleStrike().run()}
+                className={menuBtn(editor.isActive("strike"))}
               >
                 <span className="line-through">S</span>
               </button>
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleCode().run()}
-                className={menuButtonClass(editor.isActive("code"))}
+                onClick={() => safe(editor)?.toggleCode().run()}
+                className={menuBtn(editor.isActive("code"))}
               >
                 <CodeBracketIcon className="h-4 w-4" />
               </button>
             </div>
           </BubbleMenu>
+
           <TableBubbleMenu editor={editor} />
 
           <FloatingMenu
             editor={editor}
-            className="overflow-hidden rounded-lg border border-neutral-200 bg-white px-2 py-1 shadow-xl"
-            tippyOptions={{ placement: "left-start", offset: [0, 10] }}
+            className="rounded-lg border border-neutral-200 bg-white px-2 py-1 shadow-xl"
             shouldShow={({ state }) => {
               const { $from } = state.selection;
-              return $from.parent.type.name === "paragraph" && $from.parent.textContent.length === 0;
+              if (!$from.parent.isTextblock) return false;
+              return $from.parent.type.name === "paragraph" && $from.parent.childCount === 0;
             }}
           >
             <div className="flex items-center gap-1 text-sm text-neutral-600">
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleBulletList().run()}
-                className={blockButtonClass(editor.isActive("bulletList"))}
+                onClick={() => safe(editor)?.toggleBulletList().run()}
+                className={blockBtn(editor.isActive("bulletList"))}
               >
-                • List
+                ● List
               </button>
               <button
                 type="button"
-                onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                className={blockButtonClass(editor.isActive("orderedList"))}
+                onClick={() => safe(editor)?.toggleOrderedList().run()}
+                className={blockBtn(editor.isActive("orderedList"))}
               >
                 1. List
               </button>
               <button
                 type="button"
-                onClick={() => editor.chain().focus().setCallout().run()}
-                className={blockButtonClass(editor.isActive("callout"))}
+                onClick={() => safe(editor)?.setCallout().run()}
+                className={blockBtn(editor.isActive("callout"))}
               >
                 Callout
               </button>
@@ -737,20 +570,17 @@ export function TipTapEditor({
                 type="button"
                 onClick={() => {
                   const url = window.prompt("Embed URL");
-                  if (!url) return;
-                  editor.chain().focus().setEmbed({ url }).run();
+                  if (url) safe(editor)?.setEmbed({ url }).run();
                 }}
-                className={blockButtonClass(false)}
+                className={blockBtn(false)}
               >
                 Embed
               </button>
             </div>
           </FloatingMenu>
 
-          <EditorContent editor={editor} className="notion-editor-content" />
+          <EditorContent editor={editor} />
         </>
-      ) : (
-        <div className="h-40 animate-pulse rounded-xl bg-neutral-200/80" />
       )}
     </div>
   );
