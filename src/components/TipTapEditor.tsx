@@ -577,7 +577,24 @@ export function TipTapEditor({
 
     const { from, to } = editor.state.selection;
     editor.commands.setContent(normalized, false);
-    editor.commands.setTextSelection({ from, to });
+
+    const docSize = Math.max(0, editor.state.doc.content.size);
+    const clampToDoc = (position: number) => {
+      if (position < 0) {
+        return 0;
+      }
+
+      if (position > docSize) {
+        return docSize;
+      }
+
+      return position;
+    };
+
+    const clampedFrom = clampToDoc(from);
+    const clampedTo = clampToDoc(to);
+
+    editor.commands.setTextSelection({ from: clampedFrom, to: clampedTo });
     const updatedHtml = editor.getHTML();
     lastValueRef.current = editor.isEmpty ? "" : updatedHtml;
   }, [editor, value]);
