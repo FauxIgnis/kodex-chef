@@ -20,7 +20,7 @@ import Details from "@tiptap/extension-details";
 import DetailsSummary from "@tiptap/extension-details-summary";
 import DetailsContent from "@tiptap/extension-details-content";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { lowlight } from "lowlight";
+import { createLowlight } from "lowlight";
 import javascript from "highlight.js/lib/languages/javascript";
 import typescript from "highlight.js/lib/languages/typescript";
 import css from "highlight.js/lib/languages/css";
@@ -48,6 +48,7 @@ import { CalloutNodeView } from "./editor/nodes/CalloutNodeView";
 import { EmbedNodeView } from "./editor/nodes/EmbedNodeView";
 import { TableBubbleMenu } from "./editor/TableBubbleMenu";
 
+const lowlight = createLowlight();
 lowlight.registerLanguage("javascript", javascript);
 lowlight.registerLanguage("typescript", typescript);
 lowlight.registerLanguage("css", css);
