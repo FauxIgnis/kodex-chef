@@ -548,6 +548,9 @@ export function TipTapEditor({
             </div>
           </BubbleMenu>
 
-          <TableBubbleMenu editor={editor} />
+                   <TableBubbleMenu editor={editor} />
         </>
       )}
+    </div>
+  );
+}
