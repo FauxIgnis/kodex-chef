@@ -162,10 +162,15 @@ export function DocumentEditor({ documentId, onDocumentChange, currentUserName }
     };
   }, [hasUnsavedChanges, performAutoSave]);
 
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    setHasUnsavedChanges(true);
-  };
+  const handleContentChange = useCallback(
+    (newContent: string) => {
+      setContent(newContent);
+      if (newContent !== lastContentRef.current) {
+        setHasUnsavedChanges(true);
+      }
+    },
+    [lastContentRef]
+  );
 
   const plainTextContent = useMemo(() => {
     if (!content) return "";
@@ -449,6 +454,7 @@ export function DocumentEditor({ documentId, onDocumentChange, currentUserName }
               <span>Collaborate with your team and keep every update in one place.</span>
             </div>
             <TipTapEditor
+              key={documentId ?? "new-document"}
               value={content}
               onChange={handleContentChange}
               placeholder="Type '/' for commands or start writing..."
