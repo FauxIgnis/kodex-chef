@@ -3,16 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useParams } from "react-router-dom";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
-
-const HTML_TAG_REGEX = /<\/?[a-z][^>]*>/i;
-
-const escapeHtml = (input: string) =>
-  input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+import { normalizeDocumentContent } from "./lib/documentContent";
 
 export function SharedDocument() {
   const { shareableLink } = useParams<{ shareableLink: string }>();
@@ -23,31 +14,10 @@ export function SharedDocument() {
     shareableLink ? { shareableLink } : "skip"
   );
 
-  const formattedContent = useMemo(() => {
-    if (!document?.content) {
-      return "";
-    }
-
-    if (HTML_TAG_REGEX.test(document.content)) {
-      return document.content;
-    }
-
-    const paragraphs = document.content.split(/\n{2,}/);
-
-    return paragraphs
-      .map((paragraph) => {
-        if (!paragraph.trim()) {
-          return "<p><br /></p>";
-        }
-
-        const lines = paragraph
-          .split(/\n/)
-          .map((line) => escapeHtml(line.trimEnd()));
-
-        return `<p>${lines.join("<br />")}</p>`;
-      })
-      .join("");
-  }, [document?.content]);
+  const formattedContent = useMemo(
+    () => normalizeDocumentContent(document?.content),
+    [document?.content]
+  );
 
   useEffect(() => {
     if (shareableLink && document === null) {

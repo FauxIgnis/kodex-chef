@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { 
-  ShareIcon, 
-  ClockIcon, 
+import {
+  ShareIcon,
+  ClockIcon,
   ChatBubbleLeftIcon,
   DocumentArrowDownIcon,
   UsersIcon,
@@ -19,40 +19,7 @@ import {
 import { toast } from "sonner";
 import { AIChatSidebar } from "./AIChatSidebar";
 import { TipTapEditor } from "./TipTapEditor";
-
-const HTML_TAG_REGEX = /<\/?[a-z][^>]*>/i;
-
-const escapeHtml = (input: string) =>
-  input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-const normalizeDocumentContent = (rawContent: string | null | undefined) => {
-  if (!rawContent) return "";
-
-  if (HTML_TAG_REGEX.test(rawContent)) {
-    return rawContent;
-  }
-
-  const paragraphs = rawContent.split(/\n{2,}/);
-
-  return paragraphs
-    .map((paragraph) => {
-      if (!paragraph.trim()) {
-        return "<p><br /></p>";
-      }
-
-      const lines = paragraph
-        .split(/\n/)
-        .map((line) => escapeHtml(line.trimEnd()));
-
-      return `<p>${lines.join("<br />")}</p>`;
-    })
-    .join("");
-};
+import { normalizeDocumentContent } from "../lib/documentContent";
 
 interface DocumentEditorProps {
   documentId: string | null;
