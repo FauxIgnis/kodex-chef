@@ -151,6 +151,18 @@ export function DocumentEditor({ documentId, onDocumentChange, currentUserName }
     return temp.textContent || temp.innerText || "";
   }, [content]);
 
+  const plainTextContent = useMemo(() => {
+    if (!content) return "";
+
+    if (typeof window === "undefined") {
+      return content.replace(/<[^>]+>/g, " ").trim();
+    }
+
+    const temp = document.createElement("div");
+    temp.innerHTML = content;
+    return temp.textContent || temp.innerText || "";
+  }, [content]);
+
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle);
     setIsEditingTitle(true);
